@@ -1,6 +1,10 @@
 pub mod ast;
 pub mod interpreter;
 
+use core::panic;
+use std::env;
+use std::fs::File;
+use std::io::Read;
 use lalrpop_util::lalrpop_mod;
 lalrpop_mod!(
     #[allow(clippy::ptr_arg)]
@@ -11,6 +15,18 @@ lalrpop_mod!(
 use interpreter::Interpreter;
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    let file_name = args.get(1);
+    let mut source_file = match File::open(file_name){
+        Ok(source_file) => source_file,
+        Err(err) => panic!("File Could not be opened: {}", err),
+    };
+    let mut source = String::new();
+    match source_file.read_to_string(&mut source){
+        Ok(source) => source,
+        Err(err) => panic!("Instructions could not be read: {}", err),
+    };
+    dbg!(args);
     let source = r#"
 def greet(name)
     puts "Hello, " + name + "!";
