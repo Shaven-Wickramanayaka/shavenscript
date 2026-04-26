@@ -5,7 +5,9 @@ pub enum Expr{
     Bool(bool),
     Variable(String),
     BinOp(Box<Expr>, Op, Box<Expr>),
-    Call(String, Vec<Expr>)
+    Call(String, Vec<Expr>),
+    ArrayLiteral(Vec<Expr>),
+    Index(Box<Expr>, Box<Expr>)
 }
 #[derive(Clone)]
 pub enum Op {
@@ -27,4 +29,5 @@ pub enum Statement {
     Def(String, Vec<String>, Vec<Statement>),
     Return(Expr),
     ExprStatement(Expr),
+    IndexAssign(String, Expr,Expr),
 }

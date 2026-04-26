@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap};
 use crate::ast::{Expr, Op, Statement};
 
 #[derive(Clone, Debug)]
@@ -6,6 +6,7 @@ pub enum Value {
     Number(f64),
     StringVal(String),
     Bool(bool),
+    Array(Vec<Value>),
     Nil,
 }
 
@@ -22,6 +23,10 @@ impl std::fmt::Display for Value {
             Value::StringVal(s) => write!(f, "{s}"),
             Value::Bool(b) => write!(f, "{b}"),
             Value::Nil => write!(f, "nil"),
+            Value::Array(elements) => {
+                let source_format: Vec<String> = elements.iter().map(|v| v.to_string()).collect();
+                write!(f,"[{}]", source_format.join(","))
+            }
         }
     }
 }
@@ -43,7 +48,19 @@ impl Interpreter {
             functions: HashMap::new(),
         }
     }
-
+    fn value_to_index(&self, value: Value) -> Result<usize, String>{
+        match value{
+            Value::Number(n) =>{
+                if n < 0.0 || n as i64 as f64 != n {
+                    Err(format!("Array index must be greater than 0 and a must be an integer, {n}"))
+                } else{
+                    Ok(n as usize)
+                }
+                
+            }
+            _ => Err("Index must be a number".to_string()),
+        }
+    }
     pub fn run(&mut self, program: Vec<Statement>) -> Result<(), String> {
         for stmt in &program {
             self.exec_statement(stmt)?;
@@ -109,6 +126,26 @@ impl Interpreter {
                 self.eval_expr(expr)?;
                 Ok(None)
             }
+            Statement::IndexAssign(name, index_expr, value_expr ) =>{
+                let index = {
+                    let index_value = self.eval_expr(index_expr)?;
+                    self.value_to_index(index_value)?
+                };
+                let new_value = self.eval_expr(value_expr)?;
+                let target =  self.variables.get_mut(name).ok_or_else(|| format!("undefined variable: {name}"))?;
+
+                match target {
+                    Value::Array(items) => {
+                        if index >= items.len() {
+                            Err(format!("index out of bounds: index {index}, length {}",items.len()))
+                        } else {
+                        items[index] = new_value;
+                        Ok(None)
+                        }
+                    }
+                    _ => Err(format!("cannot index-assign into non-array variable: {name}")),
+                }
+            }
         }
     }
 
@@ -132,6 +169,23 @@ impl Interpreter {
                     args.iter().map(|a| self.eval_expr(a)).collect();
                 let evaluated_args = evaluated_args?;
                 self.call_function(name, evaluated_args)
+            }
+            Expr::Index(target_expr, index_expr ) =>{
+                let target = self.eval_expr(target_expr)?;
+                let index = {
+                    let index_value = self.eval_expr(index_expr)?;
+                    self.value_to_index(index_value)?
+                };
+                match target{
+                    Value::Array(items) => items.get(index).cloned().ok_or_else(|| format!("index out of bounds")), 
+                    _ => Err("Non indexable value".to_string(),)
+                }
+            }
+            Expr::ArrayLiteral(elements) =>{
+                let mut values = Vec::with_capacity(elements.len());
+                for e in elements{
+                    values.push(self.eval_expr(e)?);
+                }Ok(Value::Array(values))
             }
         }
     }
@@ -197,6 +251,7 @@ impl Interpreter {
             Value::Number(n) => *n != 0.0,
             Value::StringVal(s) => !s.is_empty(),
             Value::Nil => false,
+            Value::Array(items) => !items.is_empty(),
         }
     }
 }
