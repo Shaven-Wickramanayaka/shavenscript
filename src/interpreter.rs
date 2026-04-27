@@ -9,7 +9,11 @@ pub enum Value {
     Array(Vec<Value>),
     Nil,
 }
-
+enum Controls {
+    None,
+    Return(Value),
+    Break,
+}
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -63,39 +67,50 @@ impl Interpreter {
     }
     pub fn run(&mut self, program: Vec<Statement>) -> Result<(), String> {
         for stmt in &program {
-            self.exec_statement(stmt)?;
+            // self.exec_statement(stmt)?;
+            match self.exec_statement(stmt)? {
+                Controls::None => {}
+                Controls::Return(_) => {
+                    return Err("Return not expected outside function".to_string());
+                }
+                Controls::Break => {
+                    return Err("Break not expected outside loop".to_string());
+                }
+            }
         }
         Ok(())
     }
 
-    fn exec_statement(&mut self, stmt: &Statement) -> Result<Option<Value>, String> {
+    fn exec_statement(&mut self, stmt: &Statement) -> Result<Controls, String> {
         match stmt {
             Statement::Puts(expr) => {
                 let val = self.eval_expr(expr)?;
                 println!("{val}");
-                Ok(None)
+                Ok(Controls::None)
             }
             Statement::Assign(name, expr) => {
                 let val = self.eval_expr(expr)?;
                 self.variables.insert(name.clone(), val);
-                Ok(None)
+                Ok(Controls::None)
             }
             Statement::If(cond, body, else_body) => {
                 let val = self.eval_expr(cond)?;
                 if self.is_truthy(&val) {
                     for s in body {
-                        if let Some(ret) = self.exec_statement(s)? {
-                            return Ok(Some(ret));
+                        match self.exec_statement(s)? {
+                            Controls::None => {}
+                            flow => return Ok(flow)
                         }
                     }
                 } else if let Some(else_stmts) = else_body {
                     for s in else_stmts {
-                        if let Some(ret) = self.exec_statement(s)? {
-                            return Ok(Some(ret));
+                        match self.exec_statement(s)? {
+                            Controls::None => {}
+                            flow => return Ok(flow)
                         }
                     }
                 }
-                Ok(None)
+                Ok(Controls::None)
             }
             Statement::While(cond, body) => {
                 loop {
@@ -104,27 +119,29 @@ impl Interpreter {
                         break;
                     }
                     for s in body {
-                        if let Some(ret) = self.exec_statement(s)? {
-                            return Ok(Some(ret));
+                        match self.exec_statement(s)? {
+                            Controls::None => {}
+                            Controls::Break => return Ok(Controls::None),
+                            Controls::Return(v) => return Ok(Controls::Return(v))
                         }
                     }
                 }
-                Ok(None)
+                Ok(Controls::None)
             }
             Statement::Def(name, params, body) => {
                 self.functions.insert(name.clone(), Function {
                     params: params.clone(),
                     body: body.clone(),
                 });
-                Ok(None)
+                Ok(Controls::None)
             }
             Statement::Return(expr) => {
                 let val = self.eval_expr(expr)?;
-                Ok(Some(val))
+                Ok(Controls::Return(val))
             }
             Statement::ExprStatement(expr) => {
                 self.eval_expr(expr)?;
-                Ok(None)
+                Ok(Controls::None)
             }
             Statement::IndexAssign(name, index_expr, value_expr ) =>{
                 let index = {
@@ -140,12 +157,13 @@ impl Interpreter {
                             Err(format!("index out of bounds: index {index}, length {}",items.len()))
                         } else {
                         items[index] = new_value;
-                        Ok(None)
+                        Ok(Controls::None)
                         }
                     }
                     _ => Err(format!("cannot index-assign into non-array variable: {name}")),
                 }
             }
+            Statement::Break => Ok(Controls::Break),
         }
     }
 
@@ -235,10 +253,21 @@ impl Interpreter {
         let body = func.body.clone();
         let mut result = Value::Nil;
         for stmt in &body {
-            if let Some(ret) = self.exec_statement(stmt)? {
-                result = ret;
-                break;
+            match self.exec_statement(stmt)? {
+                Controls::None => {}
+                Controls::Return(value) => {
+                    result = value;
+                    break;
+                }
+                Controls::Break => {
+                    self.variables = old_vars;
+                    return Err("Break not expected outside looop".to_string());
+                }
             }
+            // if let Some(ret) = self.exec_statement(stmt)? {
+            //     result = ret;
+            //     break;
+            // }
         }
 
         self.variables = old_vars;

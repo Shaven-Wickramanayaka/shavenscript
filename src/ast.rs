@@ -30,4 +30,5 @@ pub enum Statement {
     Return(Expr),
     ExprStatement(Expr),
     IndexAssign(String, Expr,Expr),
+    Break,
 }

@@ -23,12 +23,14 @@ say result;
 
 i = 1;
 while i < 6 do
+    break;
     say i;
     i = i + 1;
 end;
 
 if 10 > 5 then
-    say "ten is greater";
+
+    say 'ten is greater';
 else
    say "this won't print";
 end;
