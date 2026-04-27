@@ -2,6 +2,11 @@
 name = "shavenscript"
 version = "0.1.0"
 edition = "2024"
+description = "Lightweight programming language made in rust with support for array and basic operations"
+readme = "README.md"
+keywords = ["language", "interpreter"]
+license = "MIT"
+repository = "https://github.com/Shaven-Wickramanayaka/shavenscript"
 
 [build-dependencies]
 lalrpop = "0.23.1"

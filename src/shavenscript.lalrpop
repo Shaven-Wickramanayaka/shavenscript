@@ -18,13 +18,13 @@ SemiStatement: Statement = {
 
 Statement: Statement = {
     "say" <e:Expr> => Statement::Puts(e),
-    "if" <cond:Expr> "then" <body:SemiStatement+> "end" =>
+    "if" <cond:Expr> "do" <body:SemiStatement+> "stop" =>
         Statement::If(cond, body, None),
-    "if" <cond:Expr> "then" <body:SemiStatement+> "else" <else_body:SemiStatement+> "end" =>
+    "if" <cond:Expr> "do" <body:SemiStatement+> "else" <else_body:SemiStatement+> "stop" =>
         Statement::If(cond, body, Some(else_body)),
-    "while" <cond:Expr> "do" <body:SemiStatement+> "end" =>
+    "while" <cond:Expr> "do" <body:SemiStatement+> "stop" =>
         Statement::While(cond, body),
-    "def" <name:Ident> "(" <params:Comma<Ident>> ")" <body:SemiStatement+> "end" =>
+    "function" <name:Ident> "(" <params:Comma<Ident>> ")" <body:SemiStatement+> "stop" =>
         Statement::Def(name, params, body),
     "return" <e:Expr> => Statement::Return(e),
     <name:Ident> "[" <index:Expr> "]" "=" <value:Expr> => Statement::IndexAssign(name, index, value),
