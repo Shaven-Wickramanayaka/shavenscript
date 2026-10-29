@@ -18,7 +18,7 @@
 ### Prerequisites - Cargo, Rust
 
 - cargo install shavenscript
-- cargo run
+- cargo run <name-of-file-to-be-run>
 
 ## Cloning
 
